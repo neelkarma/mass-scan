@@ -10,7 +10,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "canvas": "^2.11.0",
     "jsbarcode": "^3.11.5",
