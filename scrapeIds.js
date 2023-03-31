@@ -3,10 +3,13 @@ import puppeteer from "puppeteer";
 
 const wait = (duration) => new Promise((r) => setTimeout(r, duration));
 
+const RETRY_LIMIT = 10;
 const SCROLL_SELECTOR = ".zQTmif";
 const ROW_SELECTOR = ".zYQnTe";
 const NAME_SELECTOR = ".PDfZbf";
 const EMAIL_SELECTOR = ".hUL4le";
+
+// You can't use a RegExp object here since Puppeteer converts it to a string when its sent to the browser
 const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
 (async () => {
@@ -18,7 +21,9 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   console.log(
     "Sign in with your id@student.sbhs.nsw.edu.au email. You have 2 minutes."
   );
-  await page.waitForSelector(NAME_SELECTOR, { timeout: 120000 });
+
+  // Waits until a selector from the directory page is found.
+  await page.waitForSelector(ROW_SELECTOR, { timeout: 120000 });
 
   console.log("Signed in successfully! Scraping (this might take a while)...");
 
@@ -30,43 +35,52 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
     const entries = await page.$$eval(
       ROW_SELECTOR,
-      (rows, nameSelector, emailSelector, emailRegex) =>
-        rows
+      (rows, nameSelector, emailSelector, emailRegex) => {
+        const regex = new RegExp(emailRegex);
+
+        return rows
           .filter((row) =>
-            new RegExp(emailRegex).test(
-              row.querySelector(emailSelector).textContent
-            )
+            // Filter based on student email pattern
+            regex.test(row.querySelector(emailSelector).textContent)
           )
           .map((row) => {
+            // Extract id and name from row
             const id = row.querySelector(emailSelector).textContent.slice(0, 9);
             const name = row.querySelector(nameSelector).textContent;
             return [id, name];
-          }),
+          });
+      },
       NAME_SELECTOR,
       EMAIL_SELECTOR,
       EMAIL_REGEX
     );
 
+    // Add new entries into students object
     for (const [id, name] of entries) {
       if (!(id in students)) {
         stale = false;
+        students[id] = name;
         console.log(name, id);
       }
-
-      students[id] = name;
     }
 
+    // If no new IDs were found
     if (stale) {
-      if (staleCount > 10) {
+      // If this limit is reached, the program ends
+      if (staleCount > RETRY_LIMIT) {
         break;
       }
+
+      // Wait 300ms for new rows to load before trying again
       staleCount += 1;
       await wait(300);
       continue;
     }
 
+    // Reset stale counter
     staleCount = 0;
 
+    // Scroll the page down
     await page.evaluate((scrollSelector) => {
       const scrollArea = document.querySelector(scrollSelector);
       scrollArea.scrollBy(0, window.innerHeight);

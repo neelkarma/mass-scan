@@ -2,6 +2,7 @@ import { createCanvas } from "canvas";
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "fs";
 import JsBarcode from "jsbarcode";
 
+// Exit if students.json not found
 if (!existsSync("students.json")) {
   console.error(
     "students.json not found - have you run the scrapeIds.js script?"
@@ -24,7 +25,9 @@ const canvas = createCanvas();
     const out = createWriteStream(`barcodes/${name} ${id}.jpg`);
     const stream = canvas.createJPEGStream();
     stream.pipe(out);
+
+    // This essentially blocks the thread until the current barcode has finished saving.
     await new Promise((r) => out.on("finish", r));
   }
-  console.log("Done!");
+  console.log("Done! The barcodes are saved in the `barcodes` folder.");
 })();
