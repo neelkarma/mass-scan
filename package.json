@@ -1,0 +1,19 @@
+{
+  "name": "mass-scan",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "scrapeIds": "node scrapeIds.js",
+    "genBarcodes": "node genBarcodes.js",
+    "clean": "node clean.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "canvas": "^2.11.0",
+    "jsbarcode": "^3.11.5",
+    "puppeteer": "^19.8.2"
+  }
+}
