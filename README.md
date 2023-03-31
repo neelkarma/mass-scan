@@ -38,7 +38,7 @@ The important thing to note is that the barcode on your student ID card is
 _literally just your student ID encoded into a Code-128 barcode_. No hashing, no
 salting, no nothing. It's just your student ID.
 
-In fact, if you're a SBHS student, you can generating your own yourself by going
+In fact, if you're a SBHS student, you can generating your own barcode yourself by going
 to a Code-128 barcode generator online (like
 [this one](https://barcode.tec-it.com/en/Code128)) and entering your student ID
 in. If you look closely, the generated barcode is the exactly the same as your
