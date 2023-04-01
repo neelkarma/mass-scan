@@ -11,7 +11,7 @@ use this to scan in the entire school in at once or something stupid like that.
 
 _NOTE: This only works if you have a valid SBHS student email and password._
 
-0. Make sure you have NodeJS and pnpm installed.
+0. Make sure you have NodeJS, pnpm and Git installed.
 1. Clone this repo.
 2. `pnpm i` - This might take a while as Puppeteer (the browser automation tool
    used) installs its own version of Chromium
