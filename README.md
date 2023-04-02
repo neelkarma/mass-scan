@@ -2,6 +2,8 @@
 
 > Create student IDs for the entirety of SBHS!
 
+[Demo on YouTube](https://youtu.be/-g9ra3fwuI0)
+
 ## Disclaimer
 
 Use this for educational purposes only. I'll get in trouble if someone tries to
