@@ -1,4 +1,5 @@
 import { writeFile } from "fs/promises";
+import ora from "ora";
 import puppeteer from "puppeteer";
 
 const wait = (duration) => new Promise((r) => setTimeout(r, duration));
@@ -25,12 +26,25 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   // Waits until a selector from the directory page is found.
   await page.waitForSelector(ROW_SELECTOR, { timeout: 120000 });
 
-  console.log("Signed in successfully! Scraping (this might take a while)...");
+  console.log(
+    "\nSigned in successfully! Scraping (this might take a while)..."
+  );
 
   const students = {};
   let finalWaitCount = 0;
 
+  const spinner = ora().start();
+  spinner.text = "0 entries scraped (0% complete)";
+
   while (true) {
+    // This calculates the scroll progress from 0 to 1
+    const scrollProgress = await page.evaluate((scrollSelector) => {
+      const scrollEl = document.querySelector(scrollSelector);
+      return (
+        scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
+      );
+    }, SCROLL_SELECTOR);
+
     let stale = true;
 
     const entries = await page.$$eval(
@@ -60,20 +74,11 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
       if (!(id in students)) {
         stale = false;
         students[id] = name;
-        console.log(name, id);
       }
     }
 
     // If no new IDs were found
     if (stale) {
-      // This calculates the scroll progress from 0 to 1
-      const scrollProgress = await page.evaluate((scrollSelector) => {
-        const scrollEl = document.querySelector(scrollSelector);
-        return (
-          scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
-        );
-      }, SCROLL_SELECTOR);
-
       // If we've reached the bottom
       if (scrollProgress === 1) {
         // We still try a few more times in case the final rows haven't loaded yet
@@ -87,6 +92,11 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
       continue;
     }
 
+    // Update spinner text
+    spinner.text = `${
+      Object.keys(students).length
+    } entries scraped (${Math.round(scrollProgress * 100)}% complete)`;
+
     // Scroll the page down
     await page.evaluate((scrollSelector) => {
       const scrollEl = document.querySelector(scrollSelector);
@@ -95,8 +105,9 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   }
 
   browser.close();
+  spinner.succeed();
 
-  console.log("Scrape complete!");
+  console.log(`\nScraped ${Object.keys(students).length} entries!`);
   await writeFile("students.json", JSON.stringify(students));
   console.log("Output written to students.json.");
 })();
