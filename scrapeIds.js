@@ -28,7 +28,7 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   console.log("Signed in successfully! Scraping (this might take a while)...");
 
   const students = {};
-  let staleCount = 0;
+  let finalWaitCount = 0;
 
   while (true) {
     let stale = true;
@@ -66,19 +66,23 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
     // If no new IDs were found
     if (stale) {
-      // If this limit is reached, the program ends
-      if (staleCount > RETRY_LIMIT) {
-        break;
+      // Check if we've reached the bottom
+
+      const scrollProgress = await page.evaluate((scrollSelector) => {
+        const el = document.querySelector(scrollSelector);
+        return el.scrollTop / (el.scrollHeight - el.clientHeight);
+      }, SCROLL_SELECTOR);
+
+      if (scrollProgress === 1) {
+        if (finalWaitCount == RETRY_LIMIT) {
+          break;
+        }
+        finalWaitCount += 1;
       }
 
-      // Wait 300ms for new rows to load before trying again
-      staleCount += 1;
       await wait(300);
       continue;
     }
-
-    // Reset stale counter
-    staleCount = 0;
 
     // Scroll the page down
     await page.evaluate((scrollSelector) => {
