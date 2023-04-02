@@ -66,14 +66,17 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
     // If no new IDs were found
     if (stale) {
-      // Check if we've reached the bottom
-
+      // This calculates the scroll progress from 0 to 1
       const scrollProgress = await page.evaluate((scrollSelector) => {
-        const el = document.querySelector(scrollSelector);
-        return el.scrollTop / (el.scrollHeight - el.clientHeight);
+        const scrollEl = document.querySelector(scrollSelector);
+        return (
+          scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
+        );
       }, SCROLL_SELECTOR);
 
+      // If we've reached the bottom
       if (scrollProgress === 1) {
+        // We still try a few more times in case the final rows haven't loaded yet
         if (finalWaitCount == RETRY_LIMIT) {
           break;
         }
@@ -86,8 +89,8 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
     // Scroll the page down
     await page.evaluate((scrollSelector) => {
-      const scrollArea = document.querySelector(scrollSelector);
-      scrollArea.scrollBy(0, window.innerHeight);
+      const scrollEl = document.querySelector(scrollSelector);
+      scrollEl.scrollBy(0, scrollEl.clientHeight);
     }, SCROLL_SELECTOR);
   }
 
