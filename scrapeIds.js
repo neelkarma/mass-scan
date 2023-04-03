@@ -1,40 +1,83 @@
 import { writeFile } from "fs/promises";
+import inquirer from "inquirer";
 import ora from "ora";
 import puppeteer from "puppeteer";
 
 const wait = (duration) => new Promise((r) => setTimeout(r, duration));
 
-const RETRY_LIMIT = 10;
+const hideId = process.argv.includes("--hide-id");
+const isDebug = process.argv.includes("--debug");
+const disableHeadless = process.argv.includes("--disable-headless") || isDebug;
+
+const GAC_EMAIL_SELECTOR = "#identifierId";
+
+const SBHS_ID_SELECTOR = "#fld-username-fld";
+const SBHS_PWD_SELECTOR = "#fld-password-fld";
+
 const SCROLL_SELECTOR = ".zQTmif";
 const ROW_SELECTOR = ".zYQnTe";
 const NAME_SELECTOR = ".PDfZbf";
 const EMAIL_SELECTOR = ".hUL4le";
 
+const RETRY_LIMIT = 10;
+
 // You can't use a RegExp object here since Puppeteer converts it to a string when its sent to the browser
 const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
 (async () => {
-  const browser = await puppeteer.launch({ headless: false });
+  // Get user input
+  const { id, pwd } = await inquirer.prompt([
+    {
+      type: hideId ? "password" : "input",
+      name: "id",
+      message: "Enter your SBHS student ID: ",
+      validate: (id) => id.length === 9 && !isNaN(Number(id)),
+    },
+    {
+      type: "password",
+      name: "pwd",
+      message: "Enter your SBHS password: ",
+    },
+  ]);
+
+  const spinner = ora().start();
+  spinner.text = "Launching Puppeteer...";
+
+  const browser = await puppeteer.launch({ headless: !disableHeadless });
   const page = await browser.newPage();
+
+  if (isDebug) page.on("console", (e) => console.log(`[CONSOLE] ${e.text()}`));
+
+  spinner.text = "Loading Google Contacts login page...";
 
   await page.goto("https://contacts.google.com/u/1/directory");
 
-  console.log(
-    "Sign in with your id@student.sbhs.nsw.edu.au email. You have 2 minutes."
-  );
+  // Google Account sign in
+  await page.waitForSelector(GAC_EMAIL_SELECTOR);
+  spinner.text = "Entering SBHS Google Account email...";
+  await page.type(GAC_EMAIL_SELECTOR, id + "@student.sbhs.nsw.edu.au");
+  await page.keyboard.press("Enter");
 
-  // Waits until a selector from the directory page is found.
-  await page.waitForSelector(ROW_SELECTOR, { timeout: 120000 });
+  spinner.text = "Loading SBHS Portal login page...";
 
-  console.log(
-    "\nSigned in successfully! Scraping (this might take a while)..."
-  );
+  // Student Portal sign in
+  await page.waitForSelector(SBHS_ID_SELECTOR);
+  await wait(500); // This is because the focus shifts in the first 500ms for some reason
+
+  spinner.text = "Authenticating with SBHS Student Portal...";
+
+  await page.type(SBHS_ID_SELECTOR, id);
+  await page.type(SBHS_PWD_SELECTOR, pwd);
+  await page.keyboard.press("Enter");
+
+  spinner.text = "Loading Google Contacts directory...";
+
+  await page.waitForSelector(ROW_SELECTOR);
 
   const students = {};
   let finalWaitCount = 0;
 
-  const spinner = ora().start();
-  spinner.text = "0 entries scraped (0% complete)";
+  spinner.text = "Scraping... (0 entries scraped, 0% complete)";
 
   while (true) {
     // This calculates the scroll progress from 0 to 1
@@ -93,9 +136,9 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
     }
 
     // Update spinner text
-    spinner.text = `${
+    spinner.text = `Scraping... (${
       Object.keys(students).length
-    } entries scraped (${Math.round(scrollProgress * 100)}% complete)`;
+    } entries scraped, ${Math.round(scrollProgress * 100)}% complete)`;
 
     // Scroll the page down
     await page.evaluate((scrollSelector) => {
@@ -105,9 +148,8 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   }
 
   browser.close();
-  spinner.succeed();
 
-  console.log(`\nScraped ${Object.keys(students).length} entries!`);
+  spinner.succeed(`Scraped ${Object.keys(students).length} entries!`);
   await writeFile("students.json", JSON.stringify(students));
   console.log("Output written to students.json.");
 })();
