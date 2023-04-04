@@ -7,7 +7,7 @@ const wait = (duration) => new Promise((r) => setTimeout(r, duration));
 
 const hideId = process.argv.includes("--hide-id");
 const isDebug = process.argv.includes("--debug");
-const disableHeadless = process.argv.includes("--disable-headless") || isDebug;
+const noHeadless = process.argv.includes("--no-headless") || isDebug;
 
 const GAC_EMAIL_SELECTOR = "#identifierId";
 
@@ -43,7 +43,7 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   const spinner = ora().start();
   spinner.text = "Launching Puppeteer...";
 
-  const browser = await puppeteer.launch({ headless: !disableHeadless });
+  const browser = await puppeteer.launch({ headless: !noHeadless });
   const page = await browser.newPage();
 
   if (isDebug) page.on("console", (e) => console.log(`[CONSOLE] ${e.text()}`));
