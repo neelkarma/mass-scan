@@ -17,12 +17,11 @@ _NOTE: This only works if you have a valid SBHS student email and password._
 1. Clone this repo.
 2. `pnpm i` - This might take a while as Puppeteer (the browser automation tool
    used) installs its own version of Chromium
-3. `pnpm scrapeIds`
-4. A browser window should pop up - follow the directions in the terminal and
-   wait for the scrape to complete.
-5. After that's done, `pnpm genBarcodes`
-6. Done! All the barcodes should be in a new `barcodes` folder.
-7. To delete all generated files, `pnpm clean`
+3. `pnpm scrapeIds` and follow the directions in the terminal (use the
+   `--no-headless` flag to see what it does under the hood)
+4. After that's done, `pnpm genBarcodes`
+5. Done! All the barcodes should be in a new `barcodes` folder.
+6. To delete all generated files, `pnpm clean`
 
 ## How it works
 
