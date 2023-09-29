@@ -21,7 +21,8 @@ _NOTE: This only works if you have a valid SBHS student email and password._
    `--no-headless` flag to see what it does under the hood)
 4. After that's done, `pnpm genBarcodes`
 5. Done! All the barcodes should be in a new `barcodes` folder.
-6. To delete all generated files, `pnpm clean`
+6. (Optional) `pnpm fetchImages` to get the photographs of all students.
+7. To delete all generated files, `pnpm clean`
 
 ## How it works
 
@@ -51,6 +52,16 @@ So, when you run `genBarcodes`, it looks at the `students.json` file generated
 by `scrapeIds` and generates Code-128 barcodes for all of them, using the
 student IDs scraped as the barcode's data and stores them in a `barcodes`
 folder.
+
+### `fetchImages`
+
+There's an endpoint in the Student Portal,
+`https://student.sbhs.net.au/shssupport/assets/images/imageproxy.php?studentid={id}`
+(where `{id}` is a student's ID) that allows you to download a photo of any
+student given their student ID and authentication.
+
+The script obtains authentication through your Student Portal credentials, then
+downloads the photos for all students through this endpoint.
 
 ## Limitations
 

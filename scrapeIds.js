@@ -1,18 +1,13 @@
 import { writeFile } from "fs/promises";
-import inquirer from "inquirer";
 import ora from "ora";
-import puppeteer from "puppeteer";
-
-const wait = (duration) => new Promise((r) => setTimeout(r, duration));
-
-const hideId = process.argv.includes("--hide-id");
-const isDebug = process.argv.includes("--debug");
-const noHeadless = process.argv.includes("--no-headless") || isDebug;
+import {
+  authenticateSBHS,
+  launchPuppeteer,
+  querySBHSCredentials,
+  wait,
+} from "./common.js";
 
 const GAC_EMAIL_SELECTOR = "#identifierId";
-
-const SBHS_ID_SELECTOR = "#fld-username-fld";
-const SBHS_PWD_SELECTOR = "#fld-password-fld";
 
 const SCROLL_SELECTOR = ".zQTmif";
 const ROW_SELECTOR = ".zYQnTe";
@@ -26,27 +21,12 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
 
 (async () => {
   // Get user input
-  const { id, pwd } = await inquirer.prompt([
-    {
-      type: hideId ? "password" : "input",
-      name: "id",
-      message: "Enter your SBHS student ID: ",
-      validate: (id) => id.length === 9 && !isNaN(Number(id)),
-    },
-    {
-      type: "password",
-      name: "pwd",
-      message: "Enter your SBHS password: ",
-    },
-  ]);
+  const { id, pwd } = await querySBHSCredentials();
 
   const spinner = ora().start();
   spinner.text = "Launching Puppeteer...";
 
-  const browser = await puppeteer.launch({ headless: !noHeadless });
-  const page = await browser.newPage();
-
-  if (isDebug) page.on("console", (e) => console.log(`[CONSOLE] ${e.text()}`));
+  const [browser, page] = await launchPuppeteer();
 
   spinner.text = "Loading Google Contacts login page...";
 
@@ -58,17 +38,10 @@ const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
   await page.type(GAC_EMAIL_SELECTOR, id + "@student.sbhs.nsw.edu.au");
   await page.keyboard.press("Enter");
 
-  spinner.text = "Loading SBHS Portal login page...";
-
-  // Student Portal sign in
-  await page.waitForSelector(SBHS_ID_SELECTOR);
-  await wait(500); // This is because the focus shifts in the first 500ms for some reason
-
   spinner.text = "Authenticating with SBHS Student Portal...";
 
-  await page.type(SBHS_ID_SELECTOR, id);
-  await page.type(SBHS_PWD_SELECTOR, pwd);
-  await page.keyboard.press("Enter");
+  // Student Portal sign in
+  await authenticateSBHS(page, { id, pwd });
 
   spinner.text = "Loading Google Contacts directory...";
 

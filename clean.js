@@ -8,6 +8,12 @@ if (existsSync("barcodes/")) {
   cleaned = true;
 }
 
+if (existsSync("photos/")) {
+  console.log("Deleting photos folder...");
+  rmSync("photos/", { recursive: true });
+  cleaned = true;
+}
+
 if (existsSync("students.json")) {
   console.log("Deleting students.json...");
   rmSync("students.json");
