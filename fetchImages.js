@@ -49,12 +49,12 @@ const students = JSON.parse(readFileSync("students.json"));
 
   spinner.text = `Downloading all photos... (0/${
     Object.keys(students).length
-  }, 0 failed)`;
+  }, 0 skipped)`;
 
   if (!existsSync("photos/")) mkdirSync("photos");
 
   let done = 0;
-  let failed = 0;
+  let skipped = 0;
 
   const reqs = Object.entries(students).map(([id, name]) => async () => {
     try {
@@ -66,15 +66,22 @@ const students = JSON.parse(readFileSync("students.json"));
           },
         }
       );
-      const stream = createWriteStream(`photos/${name} ${id}.jpg`);
-      await finished(Readable.fromWeb(res.body).pipe(stream));
-      done += 1;
+
+      const blob = await res.blob();
+      // This skips empty images
+      if (blob.size === 695) {
+        skipped += 1;
+      } else {
+        const stream = createWriteStream(`photos/${name} ${id}.jpg`);
+        await finished(Readable.fromWeb(blob.stream()).pipe(stream));
+        done += 1;
+      }
     } catch (e) {
-      failed += 1;
+      skipped += 1;
     }
-    spinner.text = `Download all photos... (${done}/${
-      Object.keys(students).length
-    }, ${failed} failed)`;
+    spinner.text = `Downloading all photos... (${done}/${
+      Object.keys(students).length - skipped
+    }, ${skipped} skipped)`;
   });
 
   // batching 50 requests at a time makes it less error-prone
@@ -82,5 +89,7 @@ const students = JSON.parse(readFileSync("students.json"));
     await Promise.all(reqs.splice(0, 50).map((f) => f()));
   }
 
-  spinner.succeed("Done! The photos are saved in the `photos` folder.");
+  spinner.succeed(
+    `${done} photos have been successfully downloaded into the \`photos\` folder!`
+  );
 })();
