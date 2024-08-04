@@ -4,7 +4,6 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "scrapeIds": "node scrapeIds.js",
     "genBarcodes": "node genBarcodes.js",
     "fetchImages": "node fetchImages.js",
     "clean": "node clean.js"
@@ -13,10 +12,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "canvas": "^2.11.0",
-    "inquirer": "^9.1.5",
-    "jsbarcode": "^3.11.5",
-    "ora": "^7.0.1",
-    "puppeteer": "^21.3.4"
-  }
+    "canvas": "^2.11.2",
+    "inquirer": "^10.1.6",
+    "jsbarcode": "^3.11.6",
+    "ora": "^8.0.1",
+    "puppeteer": "^22.15.0"
+  },
+  "packageManager": "pnpm@9.1.4+sha256.30a1801ac4e723779efed13a21f4c39f9eb6c9fbb4ced101bce06b422593d7c9"
 }

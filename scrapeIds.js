@@ -1,128 +1,72 @@
-import { writeFile } from "fs/promises";
-import ora from "ora";
-import {
-  authenticateSBHS,
-  launchPuppeteer,
-  querySBHSCredentials,
-  wait,
-} from "./common.js";
-
-const GAC_EMAIL_SELECTOR = "#identifierId";
-
-const SCROLL_SELECTOR = ".zQTmif";
-const ROW_SELECTOR = ".zYQnTe";
-const NAME_SELECTOR = ".PDfZbf";
-const EMAIL_SELECTOR = ".hUL4le";
-
-const RETRY_LIMIT = 10;
-
-// You can't use a RegExp object here since Puppeteer converts it to a string when its sent to the browser
-const EMAIL_REGEX = "\\d{9}@student\\.sbhs\\.nsw\\.edu\\.au";
+// paste the following code into the console when on the directory page in your SBHS account Google Contacts and hit enter.
+// if you are blocked from pasting, type "allow pasting" and hit enter, and then try again.
 
 (async () => {
-  // Get user input
-  const { id, pwd } = await querySBHSCredentials();
+  const SCROLL_SELECTOR = ".My2mLb";
+  const ROW_SELECTOR = ".aH18yc";
+  const NAME_SELECTOR = ".AYDrSb";
+  const EMAIL_SELECTOR = ".W7Nbnf";
+  const EMAIL_REGEX = /\d{9}@student\.sbhs\.nsw\.edu\.au/;
 
-  const spinner = ora().start();
-  spinner.text = "Launching Puppeteer...";
-
-  const [browser, page] = await launchPuppeteer();
-
-  spinner.text = "Loading Google Contacts login page...";
-
-  await page.goto("https://contacts.google.com/u/1/directory");
-
-  // Google Account sign in
-  await page.waitForSelector(GAC_EMAIL_SELECTOR);
-  spinner.text = "Entering SBHS Google Account email...";
-  await page.type(GAC_EMAIL_SELECTOR, id + "@student.sbhs.nsw.edu.au");
-  await page.keyboard.press("Enter");
-
-  spinner.text = "Authenticating with SBHS Student Portal...";
-
-  // Student Portal sign in
-  await authenticateSBHS(page, { id, pwd });
-
-  spinner.text = "Loading Google Contacts directory...";
-
-  await page.waitForSelector(ROW_SELECTOR);
-
-  const students = {};
-  let finalWaitCount = 0;
-
-  spinner.text = "Scraping... (0 entries scraped, 0% complete)";
-
-  while (true) {
-    // This calculates the scroll progress from 0 to 1
-    const scrollProgress = await page.evaluate((scrollSelector) => {
-      const scrollEl = document.querySelector(scrollSelector);
-      return (
-        scrollEl.scrollTop / (scrollEl.scrollHeight - scrollEl.clientHeight)
-      );
-    }, SCROLL_SELECTOR);
-
-    let stale = true;
-
-    const entries = await page.$$eval(
-      ROW_SELECTOR,
-      (rows, nameSelector, emailSelector, emailRegex) => {
-        const regex = new RegExp(emailRegex);
-
-        return rows
-          .filter((row) =>
-            // Filter based on student email pattern
-            regex.test(row.querySelector(emailSelector).textContent)
-          )
-          .map((row) => {
-            // Extract id and name from row
-            const id = row.querySelector(emailSelector).textContent.slice(0, 9);
-            const name = row.querySelector(nameSelector).textContent;
-            return [id, name];
-          });
-      },
-      NAME_SELECTOR,
-      EMAIL_SELECTOR,
-      EMAIL_REGEX
+  if (window.scrapeController) {
+    console.log(
+      "%cAnother instance of this script is already runing. Please refresh the page to stop the existing one first.",
+      "color: #ff0000;",
     );
-
-    // Add new entries into students object
-    for (const [id, name] of entries) {
-      if (!(id in students)) {
-        stale = false;
-        students[id] = name;
-      }
-    }
-
-    // If no new IDs were found
-    if (stale) {
-      // If we've reached the bottom
-      if (scrollProgress === 1) {
-        // We still try a few more times in case the final rows haven't loaded yet
-        if (finalWaitCount == RETRY_LIMIT) {
-          break;
-        }
-        finalWaitCount += 1;
-      }
-
-      await wait(300);
-      continue;
-    }
-
-    // Update spinner text
-    spinner.text = `Scraping... (${
-      Object.keys(students).length
-    } entries scraped, ${Math.round(scrollProgress * 100)}% complete)`;
-
-    // Scroll the page down
-    await page.evaluate((scrollSelector) => {
-      const scrollEl = document.querySelector(scrollSelector);
-      scrollEl.scrollBy(0, scrollEl.clientHeight);
-    }, SCROLL_SELECTOR);
+    return;
   }
 
-  browser.close();
+  console.log("%cmass-scan", "font-weight: bold; font-size: 2em;");
+  console.log("%cCrafted with ❤️ by iamkneel", "font-style: italic;");
+  console.log(
+    "This will take a bit. Please do not close this tab or hide it in any way while scrape is in progress.",
+  );
+  console.log(
+    "IMPORTANT: If the page starts scrolling beyond rows that haven't loaded yet, try your best to keep it from scrolling further until the rows have loaded!",
+  );
 
-  spinner.succeed(`Scraped ${Object.keys(students).length} entries!`);
-  await writeFile("students.json", JSON.stringify(students));
-  console.log("Output written to students.json.");
+  window.scrapeController = new AbortController();
+
+  const scrollEls = document.querySelectorAll(SCROLL_SELECTOR);
+  const scrollEl = scrollEls[scrollEls.length - 1];
+  scrollEl.scrollTo({ top: 0 });
+
+  const scraped = {};
+
+  const scrollEnd = () =>
+    scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 1;
+
+  while (!window.scrapeController.signal.aborted && !scrollEnd()) {
+    const rows = document.querySelectorAll(ROW_SELECTOR);
+    for (const row of rows) {
+      const name = row.querySelector(NAME_SELECTOR).textContent;
+      const email = row.querySelector(EMAIL_SELECTOR).textContent;
+      if (!EMAIL_REGEX.test(email)) continue;
+      const id = email.slice(0, 9);
+      if (!(id in scraped)) {
+        scraped[id] = name;
+      }
+    }
+
+    scrollEl.scrollBy({ top: scrollEl.clientHeight / 2 });
+
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  const scrapedJson = JSON.stringify(scraped);
+  console.log(scrapedJson);
+  try {
+    await navigator.clipboard.writeText(scrapedJson);
+    console.log(
+      "%cDone! The scraping output has been printed above and copied to your clipboard.",
+      "color: #00ff00;",
+    );
+  } catch {
+    console.log(
+      "%cDone! The scraping output has been printed above.",
+      "color: #00ff00;",
+    );
+  }
+
+  delete window.scrapeController;
 })();

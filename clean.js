@@ -14,12 +14,6 @@ if (existsSync("photos/")) {
   cleaned = true;
 }
 
-if (existsSync("students.json")) {
-  console.log("Deleting students.json...");
-  rmSync("students.json");
-  cleaned = true;
-}
-
 if (cleaned) {
   console.log("Done!");
 } else {

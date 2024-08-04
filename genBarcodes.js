@@ -5,7 +5,7 @@ import JsBarcode from "jsbarcode";
 // Exit if students.json not found
 if (!existsSync("students.json")) {
   console.error(
-    "students.json not found - have you run the scrapeIds.js script?"
+    "students.json not found. Please run the `scrapeIds` script in the browser and then paste the output into a students.json file.",
   );
   process.exit(1);
 }
@@ -28,7 +28,7 @@ await Promise.all(
 
     // promise resolves when barcode has finished writing
     return new Promise((r) => out.on("finish", r));
-  })
+  }),
 );
 
 console.log("Done! The barcodes are saved in the `barcodes` folder.");

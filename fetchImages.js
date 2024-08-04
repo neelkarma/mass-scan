@@ -1,12 +1,26 @@
 import { createWriteStream, existsSync, mkdirSync, readFileSync } from "fs";
+import inquirer from "inquirer";
+import puppeteer from "puppeteer";
 import ora from "ora";
 import { Readable } from "stream";
 import { finished } from "stream/promises";
-import {
-  authenticateSBHS,
-  launchPuppeteer,
-  querySBHSCredentials,
-} from "./common.js";
+
+export const querySBHSCredentials = () => {
+  const hideId = process.argv.includes("--hide-id");
+  return inquirer.prompt([
+    {
+      type: hideId ? "password" : "input",
+      name: "id",
+      message: "Enter your SBHS student ID: ",
+      validate: (id) => id.length === 9 && !isNaN(Number(id)),
+    },
+    {
+      type: "password",
+      name: "pwd",
+      message: "Enter your SBHS password: ",
+    },
+  ]);
+};
 
 export const interceptSBHSAuthCookie = async (page) => {
   const cdpSession = await page.target().createCDPSession();
@@ -22,13 +36,12 @@ export const interceptSBHSAuthCookie = async (page) => {
 // Exit if students.json not found
 if (!existsSync("students.json")) {
   console.error(
-    "students.json not found - have you run the scrapeIds.js script?"
+    "students.json not found. Please run the `scrapeIds` script in the browser and then paste the output into a students.json file.",
   );
   process.exit(1);
 }
 
 const students = JSON.parse(readFileSync("students.json"));
-// const students = { 440805299: "Neel Sharma" };
 
 (async () => {
   const { id, pwd } = await querySBHSCredentials();
@@ -36,12 +49,18 @@ const students = JSON.parse(readFileSync("students.json"));
   const spinner = ora().start();
   spinner.text = "Launching Puppeteer...";
 
-  const [browser, page] = await launchPuppeteer();
+  const browser = await puppeteer.launch({
+    headless: !process.argv.includes("--no-headless"),
+  });
+  const page = await browser.newPage();
 
   spinner.text = "Authenticating with SBHS Student Portal...";
 
-  await page.goto("https://student.sbhs.net.au/");
-  await authenticateSBHS(page, { id, pwd });
+  await page.goto("https://student.sbhs.net.au/", { waitUntil: "load" });
+  await page.keyboard.type(id);
+  await page.keyboard.press("Tab");
+  await page.keyboard.type(pwd);
+  await page.keyboard.press("Enter");
 
   const cookie = await interceptSBHSAuthCookie(page);
 
@@ -64,12 +83,12 @@ const students = JSON.parse(readFileSync("students.json"));
           headers: {
             cookie,
           },
-        }
+        },
       );
 
       const blob = await res.blob();
-      // This skips empty images
-      if (blob.size === 695) {
+      // This skips doodoo images
+      if ([0, 846, 1177].includes(blob.size)) {
         skipped += 1;
       } else {
         const stream = createWriteStream(`photos/${name} ${id}.jpg`);
@@ -79,6 +98,7 @@ const students = JSON.parse(readFileSync("students.json"));
     } catch (e) {
       skipped += 1;
     }
+
     spinner.text = `Downloading all photos... (${done}/${
       Object.keys(students).length - skipped
     }, ${skipped} skipped)`;
@@ -90,6 +110,6 @@ const students = JSON.parse(readFileSync("students.json"));
   }
 
   spinner.succeed(
-    `${done} photos have been successfully downloaded into the \`photos\` folder!`
+    `${done} photos have been successfully downloaded into the \`photos\` folder!`,
   );
 })();

@@ -17,24 +17,30 @@ _NOTE: This only works if you have a valid SBHS student email and password._
 1. Clone this repo.
 2. `pnpm i` - This might take a while as Puppeteer (the browser automation tool
    used) installs its own version of Chromium
-3. `pnpm scrapeIds` and follow the directions in the terminal (use the
-   `--no-headless` flag to see what it does under the hood)
-4. After that's done, `pnpm genBarcodes`
-5. Done! All the barcodes should be in a new `barcodes` folder.
-6. (Optional) `pnpm fetchImages` to get the photographs of all students.
-7. To delete all generated files, `pnpm clean`
+3. Open a browser (preferably Chromium-based) and navigate to the
+   [Google Contacts Directory of your SBHS Google Account](https://contacts.google.com/directory).
+4. Open the browser's console and paste the code from the `scrapeIds.js` file
+   into it. If the browser disallows pasting into the console, type
+   `allow pasting`, hit enter, and then try again.
+5. Follow the script's directions.
+6. After the script is completed, paste the output into a `students.json` file
+   in the directory where you cloned this repo.
+7. `pnpm genBarcodes` to generate the barcodes of all the students.
+8. `pnpm fetchImages` to get the photographs of all the students.
+9. `pnpm clean` to delete all generated files.
 
 ## How it works
 
 ### `scrapeIds`
 
-When running `scrapeIds`, the script scrapes the names and emails of every
-student from the Google Contacts Directory listing for your school account. This
-is important since every student's email is their student ID followed by
-@student.sbhs.nsw.edu.au.
+When running the `scrapeIds.js` script in the browser, the names and emails of
+every student from the Google Contacts Directory for your school account are
+scraped. This is important since every student's email is their student ID
+followed by @student.sbhs.nsw.edu.au.
 
 From the scraped emails, the IDs are extracted. Then, the IDs and their
-associated names are stored in a JSON file (`students.json`).
+associated names are output as JSON. This is what you then put in the
+`students.json` file.
 
 ### `genBarcodes`
 
@@ -58,7 +64,7 @@ folder.
 There's an endpoint in the Student Portal,
 `https://student.sbhs.net.au/shssupport/assets/images/imageproxy.php?studentid={id}`
 (where `{id}` is a student's ID) that allows you to download a photo of any
-student given their student ID and authentication.
+student given their student ID and proper authentication.
 
 The script obtains authentication through your Student Portal credentials, then
 downloads the photos for all students through this endpoint.
@@ -71,74 +77,6 @@ downloads the photos for all students through this endpoint.
   have the same name, the only way to differentiate between their barcodes will
   be their student ID.
 
-## Preventation
-
-What would the 3-man IT team at SBHS have to do to mitigate this vulnerability?
-
-Answer: They could just hide the Google Contacts Directory from students, or
-make student emails only contain names instead of student IDs. Easy.
-
-But that's only a band-aid solution, so here's a better (although more
-sophisticated) solution:
-
-> WARNING: The following requires a basic understanding of what cryptographic
-> hashing and salting is. Basically, if you're not a mega-nerd (like me), you
-> can skip all of this.
-
-No matter what, you can replicate a barcode using widely-available barcode
-scanning apps on Android and iOS, so there's no way to stop that.
-
-However, there is a possible way that:
-
-- Completely mitigates the approach used in this repo
-- Completely mitigates any other approach that uses a list of student IDs and
-  associated names
-- Makes it harder for students to replicate existing barcodes
-
-A possible solution is _salting and hashing_.
-
-It's simple - every year, when a new ID card is issued, the barcode on the
-student ID will not be just a student ID, but it'll be a scrambled version
-that's virtually impossible for a student to generate from a student's ID.
-
-This is how it would work:
-
-1. For each student, a randomly-generated salt is appended to the end of their
-   ID. _This salt must be kept secret - if the salts are leaked to the students,
-   they will be able to replicate the hashing process (next step), completely
-   nullifying this approach._
-2. The result is then hashed.
-3. The first n characters of the hash are used to generate the barcode.
-4. The barcode goes on the student's ID.
-5. The scanning machines only accept the barcodes with the hashed ID.
-
-Or, in pseudocode:
-
-```
-generate_barcode(first n chars of hash(id + random_salt))
-```
-
-Since the student doesn't have access to the salts, they will be unable to
-generate the barcodes, since to generate them you would need both the student's
-ID and the random salt for that specific student.
-
-In addition to preventing bad actors from generating the barcode for every
-single student in the school, this approach would have another benefit - it
-would automatically invalidate ID cards from previous years, meaning that
-students will be unable to give previous ID cards to friends so they can scan on
-for them.
-
-Honestly, they don't even have to salt and hash. _As long as the data in the
-barcode can't be easily replicated by student-accessible data, any approach will
-work._
-
-But will the IT team implement this? Probably not. By doing this, not only would
-the scanning machines and their backend infrastructure need to undergo a massive
-code overhaul, but other places where student ID barcodes are used (e.g. school
-photos, sports event attendance, etc.) would also need to be changed
-significantly, and frankly, I don't believe the school would really undergo such
-a big change for a vulnerability that no one is going to exploit anyways.
-
 ## FAQ
 
 ### Why?
@@ -147,3 +85,6 @@ cuzynot.
 
 Also I didn't want to study for my Modern History HSC Task 2 and needed to
 procrastinate (at the time of writing, it is in 2 days - wish me luck).
+
+Update from a year later: Guess what. I'm back. And my English Advanced Paper 1
+Trial is in 4 days. I smell a pattern here.
